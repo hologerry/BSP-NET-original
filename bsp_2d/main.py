@@ -1,12 +1,12 @@
 import os
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
-import numpy as np
-
-from model import IMSEG
 
 import tensorflow as tf
-import h5py
+
+from bsp_2d.model import IMSEG
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 
 flags = tf.app.flags
 flags.DEFINE_integer("phase", 1, "phase0=continuous phase1=discrete [1]")
@@ -23,33 +23,35 @@ flags.DEFINE_boolean("train", False, "True for training, False for testing [Fals
 flags.DEFINE_integer("start", 0, "In testing, output shapes [start:start+16]")
 FLAGS = flags.FLAGS
 
+
 def main(_):
-	if not os.path.exists(FLAGS.sample_dir):
-		os.makedirs(FLAGS.sample_dir)
+    if not os.path.exists(FLAGS.sample_dir):
+        os.makedirs(FLAGS.sample_dir)
 
-	#gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
-	#run_config = tf.ConfigProto(gpu_options=gpu_options)
-	run_config = tf.ConfigProto()
-	run_config.gpu_options.allow_growth=True
+    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+    # run_config = tf.ConfigProto(gpu_options=gpu_options)
+    run_config = tf.ConfigProto()
+    run_config.gpu_options.allow_growth = True
 
-	with tf.Session(config=run_config) as sess:
-		imseg = IMSEG(
-				sess,
-				FLAGS.phase,
-				FLAGS.sample_vox_size,
-				is_training = FLAGS.train,
-				dataset_name=FLAGS.dataset,
-				checkpoint_dir=FLAGS.checkpoint_dir,
-				sample_dir=FLAGS.sample_dir,
-				data_dir=FLAGS.data_dir)
+    with tf.Session(config=run_config) as sess:
+        imseg = IMSEG(
+            sess,
+            FLAGS.phase,
+            FLAGS.sample_vox_size,
+            is_training=FLAGS.train,
+            dataset_name=FLAGS.dataset,
+            checkpoint_dir=FLAGS.checkpoint_dir,
+            sample_dir=FLAGS.sample_dir,
+            data_dir=FLAGS.data_dir)
 
-		if FLAGS.train:
-			imseg.train(FLAGS)
-		else:
-			if FLAGS.phase==1:
-				imseg.test_bsp(FLAGS)
-			else:
-				imseg.test_dae3(FLAGS)
+        if FLAGS.train:
+            imseg.train(FLAGS)
+        else:
+            if FLAGS.phase == 1:
+                imseg.test_bsp(FLAGS)
+            else:
+                imseg.test_dae3(FLAGS)
+
 
 if __name__ == '__main__':
-	tf.app.run()
+    tf.app.run()

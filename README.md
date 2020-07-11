@@ -20,12 +20,12 @@ The difference between the original and the others are:
 ## Citation
 If you find our work useful in your research, please consider citing:
 
-	@article{chen2020bspnet,
-	  title={BSP-Net: Generating Compact Meshes via Binary Space Partitioning},
-	  author={Zhiqin Chen and Andrea Tagliasacchi and Hao Zhang},
-	  journal={Proceedings of IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
-	  year={2020}
-	}
+    @article{chen2020bspnet,
+      title={BSP-Net: Generating Compact Meshes via Binary Space Partitioning},
+      author={Zhiqin Chen and Andrea Tagliasacchi and Hao Zhang},
+      journal={Proceedings of IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+      year={2020}
+    }
 
 
 ## Dependencies
