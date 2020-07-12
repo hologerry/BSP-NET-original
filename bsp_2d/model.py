@@ -6,7 +6,7 @@ import numpy as np
 import h5py
 import cv2
 
-from bsp_2d.bspt_2d import digest_bsp
+from bspt_2d import digest_bsp
 from ops import conv2d, linear, lrelu
 
 
@@ -226,7 +226,7 @@ class IMSEG(object):
         imgs = np.clip(np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size])*256, 0, 255).astype(np.uint8)
         for t in range(self.shape_batch_size):
             cv2.imwrite(config.sample_dir+"/"+str(t)+"_out.png", imgs[t])
-            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t]*255)
+            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t])
 
         if config.phase == 1 or config.phase == 2:
             image_out_size = 256
@@ -300,6 +300,9 @@ class IMSEG(object):
                                                 feed_dict={
             self.vox3d: batch_voxels,
         })
+        for t in range(self.shape_batch_size):
+            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t])
+
         model_out = np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size, self.gf_dim])
 
         for t in range(self.shape_batch_size):
@@ -322,7 +325,7 @@ class IMSEG(object):
                         color_idx_list.append(i % len(color_list))
 
             # print(bsp_convex_list)
-            print(len(bsp_convex_list))
+            print("number of convexes", len(bsp_convex_list))
 
             # convert bspt to mesh
             # vertices = []
@@ -359,7 +362,7 @@ class IMSEG(object):
         imgs = np.clip(np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size])*256, 0, 255).astype(np.uint8)
         for t in range(self.shape_batch_size):
             cv2.imwrite(config.sample_dir+"/"+str(t)+"_out.png", imgs[t])
-            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t]*255)
+            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t])
         print("[sample]")
 
     @property
