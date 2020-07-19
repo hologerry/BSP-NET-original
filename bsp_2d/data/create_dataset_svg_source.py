@@ -14,8 +14,8 @@ alphabets = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 char_names = 'AILTU'
 
-hdf5_file = h5py.File(f"svg_fonts_{char_names}_source.hdf5", 'w')
-hdf5_file.create_dataset("pixels", [num_shapes*len(char_names), image_size, image_size, 1], np.uint8, compression=9)
+hdf5_file = h5py.File(f"svg_fonts_{char_names}_f_source.hdf5", 'w')
+hdf5_file.create_dataset("pixels", [num_shapes*len(char_names), image_size, image_size, 1], np.float, compression=9)
 
 font_id_split_name = '/home1/gaoy/svg/magenta/svg_vae_data/font_id_split_name_eval.txt'
 font_id_names = open(font_id_split_name).readlines()
