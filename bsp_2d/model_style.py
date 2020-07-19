@@ -1,4 +1,3 @@
-from bsp_2d.test_type import style_vox3d
 import os
 import time
 
@@ -219,7 +218,7 @@ class IMSEG(object):
             style_d_5 = lrelu(style_d_5)
             style_d_5 = tf.reshape(style_d_5, [-1, self.ef_dim*8])
 
-            d_5 = tf.concat([content_d_5, style_d_5], dim=1)
+            d_5 = tf.concat([content_d_5, style_d_5], 1)
 
             l0 = linear(d_5, self.ef_dim*32, scope='linear_0')
             l0 = lrelu(l0)
@@ -284,7 +283,7 @@ class IMSEG(object):
                 _, errSP, errTT = self.sess.run([ae_optim, self.loss_sp, self.loss],
                                                 feed_dict={
                     self.vox3d: self.data_voxels[dxb],
-                    self.content_vox3d: self.data_dict_source[dxb],
+                    self.content_vox3d: self.data_voxels_source[dxb],
                     self.style_vox3d: style_vox3d,
                 })
                 avg_loss_sp += errSP
