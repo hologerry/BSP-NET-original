@@ -26,10 +26,6 @@ class IMSEG(object):
         self.point_batch_size = sample_vox_size*sample_vox_size
         self.shape_batch_size = 100
 
-        self.n_style = 3
-        self.char_num = 5  # number of used chars
-        self.char_idxs = [i for i in range(self.char_num)]
-
         self.p_dim = p_dim
         self.ef_dim = ef_dim
         self.gf_dim = gf_dim
@@ -44,13 +40,6 @@ class IMSEG(object):
             self.data_voxels = self.data_dict['pixels'][:]
         else:
             print("error: cannot load "+data_hdf5_name)
-            exit(0)
-        data_hdf5_name_source = self.data_dir+'/'+self.dataset_name+'_source.hdf5'
-        if os.path.exists(data_hdf5_name_source):
-            self.data_dict_source = h5py.File(data_hdf5_name_source, 'r')
-            self.data_voxels_source = self.data_dict_source['pixels'][:]
-        else:
-            print("error: cannot load "+data_hdf5_name_source)
             exit(0)
 
         self.build_model(phase)
@@ -67,8 +56,6 @@ class IMSEG(object):
         self.coords = np.tile(np.reshape(self.coords, [1, self.point_batch_size, 2]), [self.shape_batch_size, 1, 1])
 
         self.vox3d = tf.placeholder(shape=[self.shape_batch_size, self.sample_vox_size, self.sample_vox_size, 1], dtype=tf.float32, name="vox3d")
-        self.content_vox3d = tf.placeholder(shape=[self.shape_batch_size, self.sample_vox_size, self.sample_vox_size, 1], dtype=tf.float32, name="content_vox3d")
-        self.style_vox3d = tf.placeholder(shape=[self.shape_batch_size, self.sample_vox_size, self.sample_vox_size, self.n_style], dtype=tf.float32, name="style_vox3d")
         self.point_coord = tf.constant(self.coords, dtype=tf.float32, name="point_coord")
         self.point_value = tf.reshape(self.vox3d, [self.shape_batch_size, self.point_batch_size, 1])
         self.plane_m = tf.placeholder(shape=[self.shape_batch_size, 2, self.p_dim], dtype=tf.float32, name="plane_m")
@@ -79,10 +66,10 @@ class IMSEG(object):
         elif phase == 1 or phase == 2:
             self.generator = self.generator1
         # for train
-        self.E_m, self.E_b = self.content_style_encoder(self.content_vox3d, self.style_vox3d, phase_train=True, reuse=False)
+        self.E_m, self.E_b = self.encoder(self.vox3d, phase_train=True, reuse=False)
         self.G, _, self.G2, self.cw2, self.cw3 = self.generator(self.point_coord, self.E_m, self.E_b, phase_train=True, reuse=False)
         # for test
-        self.sE_m, self.sE_b = self.content_style_encoder(self.content_vox3d, self.style_vox3d, phase_train=False, reuse=True)
+        self.sE_m, self.sE_b = self.encoder(self.vox3d, phase_train=False, reuse=True)
         self.sG, self.sG_max, self.sG2, _, _ = self.generator(self.point_coord, self.sE_m, self.sE_b, phase_train=False, reuse=True)
         self.zG, self.zG_max, self.zG2, _, _ = self.generator(self.point_coord, self.plane_m, self.plane_b, phase_train=False, reuse=True)
 
@@ -181,65 +168,6 @@ class IMSEG(object):
 
             return l4_m, l4_b
 
-    def content_style_encoder(self, content_inputs, style_inputs, phase_train=True, reuse=False):
-        with tf.variable_scope("style_encoder") as scope:
-            if reuse:
-                scope.reuse_variables()
-
-            content_d_1 = conv2d(content_inputs, shape=[4, 4, 1, self.ef_dim], strides=[1, 2, 2, 1], scope='c_conv_1')
-            content_d_1 = lrelu(content_d_1)
-
-            content_d_2 = conv2d(content_d_1, shape=[4, 4, self.ef_dim, self.ef_dim*2], strides=[1, 2, 2, 1], scope='c_conv_2')
-            content_d_2 = lrelu(content_d_2)
-
-            content_d_3 = conv2d(content_d_2, shape=[4, 4, self.ef_dim*2, self.ef_dim*4], strides=[1, 2, 2, 1], scope='c_conv_3')
-            content_d_3 = lrelu(content_d_3)
-
-            content_d_4 = conv2d(content_d_3, shape=[4, 4, self.ef_dim*4, self.ef_dim*8], strides=[1, 2, 2, 1], scope='c_conv_4')
-            content_d_4 = lrelu(content_d_4)
-
-            content_d_5 = conv2d(content_d_4, shape=[4, 4, self.ef_dim*8, self.ef_dim*8], strides=[1, 1, 1, 1], scope='c_conv_5', padding="VALID")
-            content_d_5 = lrelu(content_d_5)
-            content_d_5 = tf.reshape(content_d_5, [-1, self.ef_dim*8])
-
-            style_d_1 = conv2d(style_inputs, shape=[4, 4, self.n_style, self.ef_dim], strides=[1, 2, 2, 1], scope='s_conv_1')
-            style_d_1 = lrelu(style_d_1)
-
-            style_d_2 = conv2d(style_d_1, shape=[4, 4, self.ef_dim, self.ef_dim*2], strides=[1, 2, 2, 1], scope='s_conv_2')
-            style_d_2 = lrelu(style_d_2)
-
-            style_d_3 = conv2d(style_d_2, shape=[4, 4, self.ef_dim*2, self.ef_dim*4], strides=[1, 2, 2, 1], scope='s_conv_3')
-            style_d_3 = lrelu(style_d_3)
-
-            style_d_4 = conv2d(style_d_3, shape=[4, 4, self.ef_dim*4, self.ef_dim*8], strides=[1, 2, 2, 1], scope='s_conv_4')
-            style_d_4 = lrelu(style_d_4)
-
-            style_d_5 = conv2d(style_d_4, shape=[4, 4, self.ef_dim*8, self.ef_dim*8], strides=[1, 1, 1, 1], scope='s_conv_5', padding="VALID")
-            style_d_5 = lrelu(style_d_5)
-            style_d_5 = tf.reshape(style_d_5, [-1, self.ef_dim*8])
-
-            d_5 = tf.concat([content_d_5, style_d_5], 1)
-
-            l0 = linear(d_5, self.ef_dim*32, scope='linear_0')
-            l0 = lrelu(l0)
-
-            l1 = linear(l0, self.ef_dim*64, scope='linear_1')
-            l1 = lrelu(l1)
-
-            l2 = linear(l1, self.ef_dim*128, scope='linear_2')
-            l2 = lrelu(l2)
-
-            l3 = linear(l2, self.ef_dim*128, scope='linear_3')
-            l3 = lrelu(l3)
-
-            l4_m = linear(l3, self.p_dim*2, scope='linear_4m')
-            l4_b = linear(l3, self.p_dim, scope='linear_4b')
-
-            l4_m = tf.reshape(l4_m, [-1, 2, self.p_dim])
-            l4_b = tf.reshape(l4_b, [-1, 1, self.p_dim])
-
-            return l4_m, l4_b
-
     def train(self, config):
         ae_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.loss)
         self.sess.run(tf.global_variables_initializer())
@@ -249,19 +177,19 @@ class IMSEG(object):
         else:
             print(" [!] Load failed...")
 
-        shane_num = len(self.data_voxels)
-        batch_index_list = np.arange(shane_num)
+        sample_num = len(self.data_voxels)
+        batch_index_list = np.arange(sample_num)
 
         print("\n\n----------net summary----------")
-        print("training samples   ", shane_num)
+        print("training samples   ", sample_num)
         print("-------------------------------\n\n")
 
         # counter = 0
         start_time = time.time()
         assert config.epoch == 0 or config.iteration == 0
-        training_epoch = config.epoch + int(config.iteration/shane_num)
+        training_epoch = config.epoch + int(config.iteration/sample_num)
 
-        batch_num = int(shane_num/self.shape_batch_size)
+        batch_num = int(sample_num/self.shape_batch_size)
         for epoch in range(0, training_epoch):
             np.random.shuffle(batch_index_list)
             avg_loss_sp = 0
@@ -269,22 +197,9 @@ class IMSEG(object):
             avg_num = 0
             for idx in range(batch_num):
                 dxb = batch_index_list[idx*self.shape_batch_size:(idx+1)*self.shape_batch_size]
-                style_vox3d = []
-                for b_idx in dxb:
-                    font_idx = b_idx // self.char_num
-                    char_idxs = np.random.choice(self.char_num, self.n_style)
-                    one = []
-                    for ch_idx in char_idxs:
-                        one.append(self.data_voxels[font_idx*self.char_num+ch_idx])
-                    one = np.concatenate(one, 2)
-                    one = np.reshape(one, (1, self.sample_vox_size, self.sample_vox_size, self.n_style))
-                    style_vox3d.append(one)
-                style_vox3d = np.concatenate(style_vox3d, 0)
                 _, errSP, errTT = self.sess.run([ae_optim, self.loss_sp, self.loss],
                                                 feed_dict={
                     self.vox3d: self.data_voxels[dxb],
-                    self.content_vox3d: self.data_voxels_source[dxb],
-                    self.style_vox3d: style_vox3d,
                 })
                 avg_loss_sp += errSP
                 avg_loss_tt += errTT
@@ -307,22 +222,7 @@ class IMSEG(object):
             outG = self.sG_max
         t = 0
         batch_voxels = self.data_voxels[t:t+self.shape_batch_size]
-        content_bach_voxels = self.data_voxels_source[t:t+self.shape_batch_size]
-        style_batch_voxels = []
-        for idx in range(t, t+self.shape_batch_size):
-            font_idx = idx // self.char_num
-            char_idxs = np.random.choice(self.char_num, self.n_style)
-            one = []
-            for ch_idx in char_idxs:
-                one.append(self.data_voxels[font_idx*self.char_num+ch_idx])
-            one = np.concatenate(one, 2)
-            one = np.reshape(one, (1, self.sample_vox_size, self.sample_vox_size, self.n_style))
-            style_batch_voxels.append(one)
-        style_batch_voxels = np.concatenate(style_batch_voxels, 0)
-
-        model_out = self.sess.run(outG, feed_dict={self.vox3d: batch_voxels,
-                                  self.content_vox3d: content_bach_voxels,
-                                  self.style_vox3d: style_batch_voxels,})
+        model_out = self.sess.run(outG, feed_dict={self.vox3d: batch_voxels})
         imgs = np.clip(np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size])*256, 0, 255).astype(np.uint8)
         for t in range(self.shape_batch_size):
             cv2.imwrite(config.sample_dir+"/"+str(t)+"_out.png", imgs[t])
@@ -334,23 +234,9 @@ class IMSEG(object):
 
             start_n = config.start
             batch_voxels = self.data_voxels[start_n:start_n+self.shape_batch_size]
-            content_bach_voxels = self.data_voxels_source[start_n:start_n+self.shape_batch_size]
-            style_batch_voxels = []
-            for idx in range(start_n, start_n+self.shape_batch_size):
-                font_idx = idx // self.char_num
-                char_idxs = np.random.choice(self.char_num, self.n_style)
-                one = []
-                for ch_idx in char_idxs:
-                    one.append(self.data_voxels[font_idx*self.char_num+ch_idx])
-                one = np.concatenate(one, 2)
-                one = np.reshape(one, (1, self.sample_vox_size, self.sample_vox_size, self.n_style))
-                style_batch_voxels.append(one)
-            style_batch_voxels = np.concatenate(style_batch_voxels, 0)
             model_out, out_m, out_b = self.sess.run([self.sG2, self.sE_m, self.sE_b],
                                                     feed_dict={
                 self.vox3d: batch_voxels,
-                self.content_vox3d: content_bach_voxels,
-                self.style_vox3d: style_batch_voxels,
             })
             model_out = np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size, self.gf_dim])
 
@@ -410,27 +296,12 @@ class IMSEG(object):
 
         start_n = config.start
         batch_voxels = self.data_voxels[start_n:start_n+self.shape_batch_size]
-        content_bach_voxels = self.data_voxels_source[start_n:start_n+self.shape_batch_size]
-        style_batch_voxels = []
-        for idx in range(start_n, start_n+self.shape_batch_size):
-            font_idx = idx // self.char_num
-            char_idxs = np.random.choice(self.char_num, self.n_style)
-            one = []
-            for ch_idx in char_idxs:
-                one.append(self.data_voxels[font_idx*self.char_num+ch_idx])
-            one = np.concatenate(one, 2)
-            one = np.reshape(one, (1, self.sample_vox_size, self.sample_vox_size, self.n_style))
-            style_batch_voxels.append(one)
-        style_batch_voxels = np.concatenate(style_batch_voxels, 0)
-
         model_out, out_m, out_b = self.sess.run([self.sG2, self.sE_m, self.sE_b],
                                                 feed_dict={
             self.vox3d: batch_voxels,
-            self.content_vox3d: content_bach_voxels,
-            self.style_vox3d: style_batch_voxels,
         })
         for t in range(self.shape_batch_size):
-            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t] * 255)
+            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t] * 255.0)
 
         model_out = np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size, self.gf_dim])
 
@@ -484,23 +355,10 @@ class IMSEG(object):
             return
         t = 0
         batch_voxels = self.data_voxels[t:t+self.shape_batch_size]
-        content_bach_voxels = self.data_voxels_source[t:t+self.shape_batch_size]
-        style_batch_voxels = []
-        for idx in range(t, t+self.shape_batch_size):
-            font_idx = idx // self.char_num
-            char_idxs = np.random.choice(self.char_num, self.n_style)
-            one = []
-            for ch_idx in char_idxs:
-                one.append(self.data_voxels[font_idx*self.char_num+ch_idx])
-            one = np.concatenate(one, 2)
-            one = np.reshape(one, (1, self.sample_vox_size, self.sample_vox_size, self.n_style))
-            style_batch_voxels.append(one)
-        style_batch_voxels = np.concatenate(style_batch_voxels, 0)
-
-        model_out = self.sess.run(self.sG, feed_dict={
-                                  self.vox3d: batch_voxels,
-                                  self.content_vox3d: content_bach_voxels,
-                                  self.style_vox3d: style_batch_voxels,})
+        model_out = self.sess.run(self.sG,
+                                  feed_dict={
+                                      self.vox3d: batch_voxels,
+                                  })
         imgs = np.clip(np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size])*256, 0, 255).astype(np.uint8)
         for t in range(self.shape_batch_size):
             cv2.imwrite(config.sample_dir+"/"+str(t)+"_out.png", imgs[t])
