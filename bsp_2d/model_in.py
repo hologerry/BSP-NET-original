@@ -136,18 +136,23 @@ class IMSEG(object):
                 scope.reuse_variables()
 
             d_1 = conv2d(inputs, shape=[4, 4, 1, self.ef_dim], strides=[1, 2, 2, 1], scope='conv_1')
+            d_1 = tf.contrib.layers.instance_norm(d_1)
             d_1 = lrelu(d_1)
 
             d_2 = conv2d(d_1, shape=[4, 4, self.ef_dim, self.ef_dim*2], strides=[1, 2, 2, 1], scope='conv_2')
+            d_2 = tf.contrib.layers.instance_norm(d_2)
             d_2 = lrelu(d_2)
 
             d_3 = conv2d(d_2, shape=[4, 4, self.ef_dim*2, self.ef_dim*4], strides=[1, 2, 2, 1], scope='conv_3')
+            d_3 = tf.contrib.layers.instance_norm(d_3)
             d_3 = lrelu(d_3)
 
             d_4 = conv2d(d_3, shape=[4, 4, self.ef_dim*4, self.ef_dim*8], strides=[1, 2, 2, 1], scope='conv_4')
+            d_4 = tf.contrib.layers.instance_norm(d_4)
             d_4 = lrelu(d_4)
 
             d_5 = conv2d(d_4, shape=[4, 4, self.ef_dim*8, self.ef_dim*8], strides=[1, 1, 1, 1], scope='conv_5', padding="VALID")
+            d_5 = tf.contrib.layers.instance_norm(d_5)
             d_5 = lrelu(d_5)
             d_5 = tf.reshape(d_5, [-1, self.ef_dim*8])
 
