@@ -14,7 +14,7 @@ alphabets = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 char_names = 'AILTU'
 
-hdf5_file = h5py.File(f"svg_fonts_{char_names}.hdf5", 'w')
+hdf5_file = h5py.File(f"svg_fonts_{char_names}_source.hdf5", 'w')
 hdf5_file.create_dataset("pixels", [num_shapes*len(char_names), image_size, image_size, 1], np.uint8, compression=9)
 
 font_id_split_name = '/home1/gaoy/svg/magenta/svg_vae_data/font_id_split_name_eval.txt'
@@ -33,11 +33,13 @@ used_font_ids = open('used_font_ids.txt', 'w')
 
 done = False
 for font_id_name in font_id_names:
-    font_id = font_id_name.split(',')[0].strip()
-    font_split = font_id_name.split(',')[1].strip()
-    if font_split == 'eval':
-        font_split = 'train'
-    font_name = font_id_name.split(',')[2].strip()
+    # font_id = font_id_name.split(',')[0].strip()
+    # font_split = font_id_name.split(',')[1].strip()
+    # if font_split == 'eval':
+    #     font_split = 'train'
+    font_id = '000012'
+    font_split = 'train'
+    # font_name = font_id_name.split(',')[2].strip()
     font_path = os.path.join(image_root_path, font_split+'_post', font_id)
     if check(font_path):
         for char in char_names:

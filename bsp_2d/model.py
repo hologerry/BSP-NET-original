@@ -65,10 +65,10 @@ class IMSEG(object):
             self.generator = self.generator0
         elif phase == 1 or phase == 2:
             self.generator = self.generator1
-
+        # for train
         self.E_m, self.E_b = self.encoder(self.vox3d, phase_train=True, reuse=False)
         self.G, _, self.G2, self.cw2, self.cw3 = self.generator(self.point_coord, self.E_m, self.E_b, phase_train=True, reuse=False)
-
+        # for test
         self.sE_m, self.sE_b = self.encoder(self.vox3d, phase_train=False, reuse=True)
         self.sG, self.sG_max, self.sG2, _, _ = self.generator(self.point_coord, self.sE_m, self.sE_b, phase_train=False, reuse=True)
         self.zG, self.zG_max, self.zG2, _, _ = self.generator(self.point_coord, self.plane_m, self.plane_b, phase_train=False, reuse=True)
@@ -168,6 +168,46 @@ class IMSEG(object):
 
             return l4_m, l4_b
 
+    def style_encoder(self, inputs, phase_train=True, reuse=False):
+        # TODO: style encoder
+        n_style = 4
+        with tf.variable_scope("style_encoder") as scope:
+            if reuse:
+                scope.reuse_variables()
+
+            d_1 = conv2d(inputs, shape=[4, 4, n_style, self.ef_dim], strides=[1, 2, 2, 1], scope='conv_1')
+            d_1 = lrelu(d_1)
+
+            d_2 = conv2d(d_1, shape=[4, 4, self.ef_dim, self.ef_dim*2], strides=[1, 2, 2, 1], scope='conv_2')
+            d_2 = lrelu(d_2)
+
+            d_3 = conv2d(d_2, shape=[4, 4, self.ef_dim*2, self.ef_dim*4], strides=[1, 2, 2, 1], scope='conv_3')
+            d_3 = lrelu(d_3)
+
+            d_4 = conv2d(d_3, shape=[4, 4, self.ef_dim*4, self.ef_dim*8], strides=[1, 2, 2, 1], scope='conv_4')
+            d_4 = lrelu(d_4)
+
+            d_5 = conv2d(d_4, shape=[4, 4, self.ef_dim*8, self.ef_dim*8], strides=[1, 1, 1, 1], scope='conv_5', padding="VALID")
+            d_5 = lrelu(d_5)
+            d_5 = tf.reshape(d_5, [-1, self.ef_dim*8])
+
+            l1 = linear(d_5, self.ef_dim*16, scope='linear_1')
+            l1 = lrelu(l1)
+
+            l2 = linear(l1, self.ef_dim*32, scope='linear_2')
+            l2 = lrelu(l2)
+
+            l3 = linear(l2, self.ef_dim*64, scope='linear_3')
+            l3 = lrelu(l3)
+
+            l4_m = linear(l3, self.p_dim*2, scope='linear_4m')
+            l4_b = linear(l3, self.p_dim, scope='linear_4b')
+
+            l4_m = tf.reshape(l4_m, [-1, 2, self.p_dim])
+            l4_b = tf.reshape(l4_b, [-1, 1, self.p_dim])
+
+            return l4_m, l4_b
+
     def train(self, config):
         ae_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1).minimize(self.loss)
         self.sess.run(tf.global_variables_initializer())
@@ -226,7 +266,7 @@ class IMSEG(object):
         imgs = np.clip(np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size])*256, 0, 255).astype(np.uint8)
         for t in range(self.shape_batch_size):
             cv2.imwrite(config.sample_dir+"/"+str(t)+"_out.png", imgs[t])
-            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t])
+            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t] * 255)
 
         if config.phase == 1 or config.phase == 2:
             image_out_size = 256
@@ -301,7 +341,7 @@ class IMSEG(object):
             self.vox3d: batch_voxels,
         })
         for t in range(self.shape_batch_size):
-            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t])
+            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t] * 255)
 
         model_out = np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size, self.gf_dim])
 
@@ -362,7 +402,7 @@ class IMSEG(object):
         imgs = np.clip(np.resize(model_out, [self.shape_batch_size, self.sample_vox_size, self.sample_vox_size])*256, 0, 255).astype(np.uint8)
         for t in range(self.shape_batch_size):
             cv2.imwrite(config.sample_dir+"/"+str(t)+"_out.png", imgs[t])
-            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t])
+            cv2.imwrite(config.sample_dir+"/"+str(t)+"_gt.png", batch_voxels[t] * 255)
         print("[sample]")
 
     @property
